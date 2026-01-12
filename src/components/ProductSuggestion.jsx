@@ -4,7 +4,6 @@ import {
   Button,
   Card,
   CardBody,
-  CardFooter,
   Heading,
   Image,
   Text,
@@ -130,7 +129,7 @@ const ProductSuggestion = ({ suggestion, onAddToCart }) => {
         </VStack>
       </CardBody>
 
-      <CardFooter pt={0}>
+      <Box px={6} pb={6} pt={0}>
         <Button
           colorScheme="blue"
           size="md"
@@ -140,7 +139,7 @@ const ProductSuggestion = ({ suggestion, onAddToCart }) => {
         >
           Add to Cart
         </Button>
-      </CardFooter>
+      </Box>
     </Card>
   )
 }

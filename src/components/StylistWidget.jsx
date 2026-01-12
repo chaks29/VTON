@@ -21,7 +21,6 @@ import {
   AlertIcon
 } from '@chakra-ui/react'
 import { gsap } from 'gsap'
-import { CloseIcon } from '@chakra-ui/icons'
 import TryOnCanvas from './TryOnCanvas'
 import ProductSuggestion from './ProductSuggestion'
 import { getStylingSuggestion, generateTryOn, generateCompositeTryOn } from '../services/aiService'

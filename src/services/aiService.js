@@ -200,6 +200,7 @@ const fallbackStylingLogic = (currentProduct, cartItems, allProducts) => {
   
   return {
     suggestedProductId: suggestedProduct.id,
+    product: suggestedProduct, // Include full product object
     reason: `This ${suggestedProduct.name} complements your outfit. The ${suggestedProduct.color} color pairs well with ${dominantColor}, and the ${suggestedProduct.fit} fit matches your style.`,
     styleTags: determineStyleTags(allItems, suggestedProduct)
   }
@@ -298,18 +299,26 @@ export const generateTryOn = async (userImage, productImage, modelType = 'idm-vt
       {
         headers: {
           'Content-Type': 'application/json'
-        },
-        responseType: 'blob'
+        }
       }
     )
     
-    // Convert blob to data URL
-    const blob = response.data
-    return new Promise((resolve) => {
-      const reader = new FileReader()
-      reader.onloadend = () => resolve(reader.result)
-      reader.readAsDataURL(blob)
-    })
+    // Handle JSON response with imageUrl (mock server)
+    if (response.data && response.data.imageUrl) {
+      return response.data.imageUrl
+    }
+    
+    // Handle blob response (production API)
+    if (response.data instanceof Blob) {
+      return new Promise((resolve) => {
+        const reader = new FileReader()
+        reader.onloadend = () => resolve(reader.result)
+        reader.readAsDataURL(response.data)
+      })
+    }
+    
+    // Fallback
+    return productImage
   } catch (error) {
     console.error('Error generating try-on:', error)
     // Return placeholder for development
