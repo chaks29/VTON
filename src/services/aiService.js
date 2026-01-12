@@ -285,10 +285,102 @@ const determineStyleTags = (items, suggestedProduct) => {
 }
 
 /**
+ * Create a composite image using Canvas (client-side mock try-on)
+ */
+const createCompositeImage = (userImageSrc, productImageSrc) => {
+  return new Promise((resolve, reject) => {
+    const canvas = document.createElement('canvas')
+    const ctx = canvas.getContext('2d')
+    
+    const userImg = new Image()
+    const productImg = new Image()
+    
+    let userLoaded = false
+    let productLoaded = false
+    let hasError = false
+    
+    const checkAndComposite = () => {
+      if (hasError) {
+        reject(new Error('Failed to load images'))
+        return
+      }
+      
+      if (userLoaded && productLoaded) {
+        try {
+          // Set canvas size to user image size
+          canvas.width = userImg.width || 800
+          canvas.height = userImg.height || 1000
+          
+          // Draw user image as background
+          ctx.drawImage(userImg, 0, 0, canvas.width, canvas.height)
+          
+          // Calculate product overlay position (center-top area for clothing)
+          const productWidth = Math.min(canvas.width * 0.7, productImg.width)
+          const productHeight = (productImg.height / productImg.width) * productWidth
+          const x = (canvas.width - productWidth) / 2
+          const y = canvas.height * 0.15 // Position near top for clothing
+          
+          // Create overlay effect with multiple blend modes for realism
+          ctx.save()
+          
+          // First overlay with multiply blend
+          ctx.globalCompositeOperation = 'multiply'
+          ctx.globalAlpha = 0.4
+          ctx.drawImage(productImg, x, y, productWidth, productHeight)
+          
+          // Second overlay with screen blend for highlights
+          ctx.globalCompositeOperation = 'screen'
+          ctx.globalAlpha = 0.2
+          ctx.drawImage(productImg, x, y, productWidth, productHeight)
+          
+          // Final overlay with normal blend
+          ctx.globalCompositeOperation = 'source-over'
+          ctx.globalAlpha = 0.6
+          ctx.drawImage(productImg, x, y, productWidth, productHeight)
+          
+          ctx.restore()
+          
+          // Convert to data URL
+          const dataUrl = canvas.toDataURL('image/jpeg', 0.9)
+          resolve(dataUrl)
+        } catch (error) {
+          reject(error)
+        }
+      }
+    }
+    
+    userImg.onload = () => {
+      userLoaded = true
+      checkAndComposite()
+    }
+    
+    productImg.onload = () => {
+      productLoaded = true
+      checkAndComposite()
+    }
+    
+    userImg.onerror = () => {
+      hasError = true
+      reject(new Error('Failed to load user image'))
+    }
+    
+    productImg.onerror = () => {
+      hasError = true
+      reject(new Error('Failed to load product image'))
+    }
+    
+    // Set sources (handle data URLs and regular URLs)
+    userImg.src = userImageSrc
+    productImg.src = productImageSrc
+  })
+}
+
+/**
  * Generate virtual try-on image
  */
 export const generateTryOn = async (userImage, productImage, modelType = 'idm-vton') => {
   try {
+    // First try the API
     const response = await axios.post(
       `${AI_API_BASE_URL}/tryon/generate`,
       {
@@ -304,7 +396,8 @@ export const generateTryOn = async (userImage, productImage, modelType = 'idm-vt
     )
     
     // Handle JSON response with imageUrl (mock server)
-    if (response.data && response.data.imageUrl) {
+    if (response.data && response.data.imageUrl && response.data.imageUrl !== productImage) {
+      // If server returned something other than just the product image, use it
       return response.data.imageUrl
     }
     
@@ -317,12 +410,33 @@ export const generateTryOn = async (userImage, productImage, modelType = 'idm-vt
       })
     }
     
-    // Fallback
-    return productImage
+    // If API didn't work or returned placeholder, create client-side composite
+    if (userImage && productImage) {
+      try {
+        const composite = await createCompositeImage(userImage, productImage)
+        return composite
+      } catch (compositeError) {
+        console.warn('Failed to create composite image:', compositeError)
+      }
+    }
+    
+    // Final fallback
+    return userImage || productImage
   } catch (error) {
     console.error('Error generating try-on:', error)
-    // Return placeholder for development
-    return productImage // Fallback to product image
+    
+    // Try client-side composite as fallback
+    if (userImage && productImage) {
+      try {
+        const composite = await createCompositeImage(userImage, productImage)
+        return composite
+      } catch (compositeError) {
+        console.warn('Failed to create composite image:', compositeError)
+      }
+    }
+    
+    // Return user image if available, otherwise product image
+    return userImage || productImage
   }
 }
 

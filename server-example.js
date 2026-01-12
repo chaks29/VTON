@@ -154,20 +154,22 @@ app.delete('/api/cart/remove/:id', (req, res) => {
 
 // POST /api/ai/tryon/generate
 app.post('/api/ai/tryon/generate', (req, res) => {
-  // In production, this would call an actual try-on API
-  // For now, return a placeholder response
+  // In production, this would call an actual try-on API (idm-vton, ootdiffusion, etc.)
+  // For development, return a response that triggers client-side compositing
   const { userImage, productImage, modelType } = req.body
   
   // Simulate processing delay
   setTimeout(() => {
-    // Return the product image as a placeholder
-    // In production, this would be the generated try-on image
+    // Return a response that indicates client-side compositing should be used
+    // The client will create a composite image using Canvas
     res.json({ 
       success: true, 
-      message: 'Try-on generation would happen here',
+      message: 'Using client-side compositing for demo. In production, this would use AI models like idm-vton or ootdiffusion.',
+      useClientSideCompositing: true,
+      // Return productImage as fallback, but client will create composite
       imageUrl: productImage 
     })
-  }, 1000)
+  }, 500) // Shorter delay since client does the work
 })
 
 // Health check
